@@ -1,4 +1,6 @@
-# Tensorboard
+# Custom
+.DS_Store
+predictions/
 tensorboard/
 
 # PyCharm

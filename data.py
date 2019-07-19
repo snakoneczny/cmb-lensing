@@ -1,18 +1,21 @@
 from os import listdir
 from os.path import join
+import resource
 
 import numpy as np
+import pandas as pd
 import astropy.io.fits as fits
 from tqdm import tqdm
 
 
-def read_train_data(folder, col_y='M500c', n_rows=None):
-    X, y = [], []
+def read_train_data(folder, col_y='M500c', n_img=None):
     file_list = listdir(folder)
+    if n_img:
+        # MacOS requirements for number of open files
+        resource.setrlimit(resource.RLIMIT_NOFILE, (n_img + 1000, -1))
+        file_list = file_list[:n_img]
 
-    if n_rows:
-        file_list = file_list[:n_rows]
-
+    X, y = [], []
     for i, file_name in enumerate(tqdm(file_list, desc='Reading data')):
         file_path = join(folder, file_name)
         img, img_info = read_cmb_lensed_img(file_path)
@@ -20,6 +23,23 @@ def read_train_data(folder, col_y='M500c', n_rows=None):
         y.append(img_info[col_y])
 
     return np.array(X), np.array(y)
+
+
+def read_cmb_lensed_folder(folder, n_img=None):
+    file_list = listdir(folder)
+    if n_img:
+        # MacOS requirements for number of open files
+        resource.setrlimit(resource.RLIMIT_NOFILE, (n_img + 1000, -1))
+        file_list = file_list[:n_img]
+
+    data = pd.DataFrame()
+    for i, file_name in enumerate(tqdm(file_list, desc='Reading data')):
+        file_path = join(folder, file_name)
+        img, img_info = read_cmb_lensed_img(file_path)
+        img_info['image'] = img
+        data = data.append(img_info, ignore_index=True)
+
+    return data
 
 
 def read_cmb_lensed_img(file):
