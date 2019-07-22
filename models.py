@@ -36,8 +36,9 @@ class CustomTensorBoard(TensorBoard):
         super().__init__(log_dir=log_dir)
 
     def on_epoch_end(self, epoch, logs=None):
+        logs_to_send = logs.copy()
         for test_name, (X_test, y_test) in self.custom_validation_data.items():
             y_pred = self.model.predict(X_test)
             mse = mean_squared_error(y_test, y_pred)
-            logs['val_loss_{}'.format(test_name)] = mse
-        super().on_epoch_end(epoch, logs)
+            logs_to_send['val_loss_{}'.format(test_name)] = mse
+        super().on_epoch_end(epoch, logs_to_send)

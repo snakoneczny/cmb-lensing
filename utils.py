@@ -1,5 +1,6 @@
 import logging
 from itertools import chain
+from os import path
 
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -112,12 +113,23 @@ def safe_indexing(X, indices):
         return [X[idx] for idx in indices]
 
 
-def save_predictions(predictions_df, timestamp, tag=None):
-    if tag:
-        file_name = '{}_{}'.format(tag, timestamp)
-    else:
-        file_name = timestamp
-
+def save_predictions(predictions_df, args, timestamp):
+    file_name = timestamp
+    if args.tag:
+        file_name = '{}_{}'.format(args.tag, file_name)
+    if args.is_test:
+        file_name = 'TEST_' + file_name
     predictions_path = 'predictions/{file_name}.csv'.format(file_name=file_name)
     predictions_df.to_csv(predictions_path, index=False)
     print('Predictions saved to: {}'.format(predictions_path))
+
+
+def get_tensorboard_dir(args, timestamp, learning_rate, batch_size):
+    log_folder = 'lr={lr}, bs={bs}, {ts}'.format(ts=timestamp.replace('_', ' '), tag=args.tag, lr=learning_rate,
+                                                 bs=batch_size)
+    if args.tag:
+        log_folder = '{}, {}'.format(args.tag, log_folder)
+    if args.is_test:
+        log_folder = 'TEST_' + log_folder
+    log_dir = path.join('tensorboard', log_folder)
+    return log_dir

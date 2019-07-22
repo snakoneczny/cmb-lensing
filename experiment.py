@@ -1,40 +1,43 @@
 import datetime
 import argparse
-from os import path
 
 import pandas as pd
 from tensorflow.python.keras.callbacks import EarlyStopping
+from tensorflow.python.keras.callbacks import TensorBoard
 
 from data import read_train_data
 from models import get_model, CustomTensorBoard
-from utils import train_test_many_split, save_predictions
+from utils import train_test_many_split, save_predictions, get_tensorboard_dir
 
-# Experiment parameters
-mass_metric = 'M500c'
-epochs = 400
-patience = 100
-batch_size = 64
-learning_rate = 0.0001
-n_img = 20000  # TODO: read all images
+# Timestamp
+timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
 
-# Get folder name for tensorboard logging
-timestamp_start = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+# Arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('-t', '--tag', dest='tag', help='experiment tag, added to logs name')
+parser.add_argument('--test', dest='is_test', action='store_true', help='flag for making a quick test')
 args = parser.parse_args()
-log_folder = '{tag}, lr={lr}, bs={bs}, {ts}'.format(ts=timestamp_start.replace('_', ' '), tag=args.tag,
-                                                    lr=learning_rate, bs=batch_size)
-log_dir = path.join('tensorboard', log_folder)
 
+# Experiment parameters
+# TODO: read all images
+mass_metric = 'M500c'
+batch_size = 64
+learning_rate = 0.0001
+if not args.is_test:
+    epochs = 400
+    patience = 80
+    n_img = 20000
+else:
+    epochs = 400
+    patience = 10
+    n_img = 200
 
 # Read and split data
-# data, labels, folds = read_tng_data()
+# TODO: sample equal distribution on mass
 X, y = read_train_data('/users/snakoneczny/data/lensing_takahashi_17/cmb_lens_imgs', n_img=n_img, col_y=mass_metric)
 X = X.reshape(X.shape[0], X.shape[1], X.shape[2], 1)
 
-# TODO: sample equal distribution on mass
-
-# TODO
+# TODO: use some normalizer and include test splitting (check first how minimum and maximum values differ between sets)
 cmb_min = X.min()
 cmb_max = X.max()
 X = (X - cmb_min) / (cmb_max - cmb_min)
@@ -47,15 +50,24 @@ y_train, y_test_low, y_test_high, y_test_random, X_train, X_test_low, X_test_hig
 # Train model
 model = get_model(input_shape=X[0].shape, lr=learning_rate)
 callbacks = [
-    EarlyStopping(monitor='val_loss', patience=patience, restore_best_weights=True),
-    CustomTensorBoard(log_dir=log_dir,
+    # TensorBoard(log_dir=get_tensorboard_dir(args, timestamp, learning_rate, batch_size)),
+    CustomTensorBoard(log_dir=get_tensorboard_dir(args, timestamp, learning_rate, batch_size),
                       validation_data={'low': (X_test_low, y_test_low), 'high': (X_test_high, y_test_high)}),
+    EarlyStopping(monitor='val_loss', patience=patience, restore_best_weights=True),
 ]
 model.fit(X_train, y_train, validation_data=(X_test_random, y_test_random), batch_size=batch_size, epochs=epochs,
           callbacks=callbacks)
 
-# TODO: print best results on validation data
-
-y_pred = model.predict(X_test_random)
-predictions = pd.DataFrame({mass_metric: y_test_random, 'm_pred': y_pred[:, 0]})
-save_predictions(predictions, args.tag, timestamp_start)
+# Predict and save
+to_pred = [
+    ('random', X_test_random, y_test_random),
+    ('low', X_test_low, y_test_low),
+    ('high', X_test_high, y_test_high),
+]
+predictions = pd.DataFrame()
+for test_name, X_test, y_test in to_pred:
+    y_pred = model.predict(X_test)
+    predictions = predictions.append(pd.DataFrame(
+        {mass_metric: y_test, 'm_pred': y_pred[:, 0], 'test': test_name}), ignore_index=True)
+    # TODO: print best results on validation data
+save_predictions(predictions, args, timestamp)

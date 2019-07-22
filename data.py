@@ -71,7 +71,7 @@ def read_tng_data():
     data = np.load('/users/snakoneczny/data/TNGclusterdat_augmented.npy')
     print(data.dtype.names)
     labels = np.log10(data['m500']).reshape(-1, 1)
-    return data['data'], labels, data['id'] % 10
+    return data['data'], labels, data['id'] % 10  # data, labels, folds
 
 # def read_fits_to_pandas(filepath, columns=None):
 #     table = Table.read(filepath, format='fits')
