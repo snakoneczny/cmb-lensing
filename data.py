@@ -20,9 +20,9 @@ def read_train_data(folder, col_y='M500c', n_img=None):
         file_path = join(folder, file_name)
         img, img_info = read_cmb_lensed_img(file_path)
 
-        if img_info['M200b'] > 1.5:
-            X.append(img)
-            y.append(img_info[col_y])
+        # if img_info['M200b'] > 2.0:
+        X.append(img)
+        y.append(img_info[col_y])
 
     return np.array(X), np.array(y)
 
