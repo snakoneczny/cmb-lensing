@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from scipy.stats import norm
 
 
@@ -18,7 +18,7 @@ def evaluate(exp_output, y_col='M500c', mass_max=None):
     mse = mean_squared_error(exp_output[y_col], [mean] * exp_output.shape[0])
     print('MSE when estimating mean {} value: {:.4f}'.format(y_col, mse))
 
-    metrics = [('MSE', mean_squared_error), ('MAE', mean_absolute_error)]
+    metrics = [('MSE', mean_squared_error), ('MAE', mean_absolute_error), ('R2', r2_score)]
     for metric_name, metric_func in metrics:
         print('{}: {:.4f}'.format(metric_name, metric_func(exp_output[y_col], exp_output['m_pred'])))
 
@@ -30,6 +30,7 @@ def evaluate(exp_output, y_col='M500c', mass_max=None):
     print('Log residuals mean: {:.4f}, sigma: {:.4f}'.format(mu, sigma))
 
     exp_output.plot.scatter(x=y_col, y='m_pred')
+    plt.plot(range(mass_max + 1))
 
     plt.figure()
     p = sns.kdeplot(exp_output[y_col], exp_output['m_pred'], shade=True)

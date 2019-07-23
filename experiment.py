@@ -3,9 +3,9 @@ import argparse
 
 import pandas as pd
 from tensorflow.python.keras.callbacks import EarlyStopping
-from tensorflow.python.keras.callbacks import TensorBoard
+from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
 
-from data import read_train_data
+from data import read_train_data, get_flat_mass_function
 from models import get_model, CustomTensorBoard
 from utils import train_test_many_split, save_predictions, get_tensorboard_dir
 
@@ -25,8 +25,8 @@ mass_metric = 'M500c'
 batch_size = 64
 learning_rate = 0.0001
 if not args.is_test:
-    epochs = 400
-    patience = 80
+    epochs = 1000
+    patience = 140
     n_img = 20000
 else:
     epochs = 400
@@ -38,6 +38,8 @@ else:
 X, y = read_train_data('/users/snakoneczny/data/lensing_takahashi_17/cmb_lens_imgs', n_img=n_img, col_y=mass_metric)
 X = X.reshape(X.shape[0], X.shape[1], X.shape[2], 1)
 
+X, y = get_flat_mass_function(X, y, n_bins=100, max_bin_size=100)
+
 # Normalize CMB images
 # TODO: use some normalizer and include test splitting (check first how minimum and maximum values differ between sets)
 cmb_min = X.min()
@@ -48,19 +50,29 @@ X = (X - cmb_min) / (cmb_max - cmb_min)
 y_train, y_test_low, y_test_high, y_test_random, X_train, X_test_low, X_test_high, X_test_random = \
     train_test_many_split(y, X, side_test_size=0.05, random_test_size=0.1)
 
+# Train data generator
 # TODO: image data generator
 # TODO: fits as normal images maybe data generator will manage do read all
+datagen = ImageDataGenerator(
+    # featurewise_center=True,
+    # featurewise_std_normalization=True,
+    # rotation_range=20,
+    horizontal_flip=True,
+    vertical_flip=True,)
+datagen.fit(X_train)
 
 # Train model
-model = get_model(input_shape=X[0].shape, lr=learning_rate)
 callbacks = [
     # TensorBoard(log_dir=get_tensorboard_dir(args, timestamp, learning_rate, batch_size)),
     CustomTensorBoard(log_dir=get_tensorboard_dir(args, timestamp, learning_rate, batch_size),
                       validation_data={'low': (X_test_low, y_test_low), 'high': (X_test_high, y_test_high)}),
     EarlyStopping(monitor='val_loss', patience=patience, restore_best_weights=True),
 ]
-model.fit(X_train, y_train, validation_data=(X_test_random, y_test_random), batch_size=batch_size, epochs=epochs,
-          callbacks=callbacks)
+# model.fit(X_train, y_train, validation_data=(X_test_random, y_test_random), batch_size=batch_size, epochs=epochs,
+#           callbacks=callbacks)
+model = get_model(input_shape=X[0].shape, lr=learning_rate)
+model.fit_generator(datagen.flow(X_train, y_train, batch_size=batch_size), steps_per_epoch=len(X_train) / batch_size,
+                    validation_data=(X_test_random, y_test_random), epochs=epochs, callbacks=callbacks)
 
 # Predict and save
 to_pred = [

@@ -75,6 +75,7 @@ def read_tng_data():
     labels = np.log10(data['m500']).reshape(-1, 1)
     return data['data'], labels, data['id'] % 10  # data, labels, folds
 
+
 # def read_fits_to_pandas(filepath, columns=None):
 #     table = Table.read(filepath, format='fits')
 #
@@ -98,3 +99,15 @@ def read_tng_data():
 #         table.loc[:, 'IMAFLAGS_ISO'] = table['IMAFLAGS_ISO'].astype(int)
 #
 #     return table
+
+def get_flat_mass_function(X, y, n_bins=40, max_bin_size=20):
+    np.random.seed(153214)
+    binned = pd.cut(y, n_bins)
+    index_final = []
+    for bin in binned.unique():
+        index = np.where(binned == bin)[0]
+        bin_size = len(index)
+        if bin_size > max_bin_size:
+            index = np.random.choice(index, max_bin_size)
+        index_final.extend(index)
+    return X[index_final], y[index_final]
