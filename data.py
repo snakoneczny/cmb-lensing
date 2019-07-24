@@ -100,7 +100,7 @@ def read_tng_data():
 #
 #     return table
 
-def get_flat_mass_function(X, y, n_bins=40, max_bin_size=20):
+def get_flat_mass_distribution(X, y, n_bins=100, max_bin_size=100):
     np.random.seed(153214)
     binned = pd.cut(y, n_bins)
     index_final = []
