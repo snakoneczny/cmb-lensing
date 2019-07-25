@@ -1,7 +1,6 @@
 import datetime
 import argparse
 
-import numpy as np
 import pandas as pd
 from tensorflow.python.keras.callbacks import EarlyStopping
 from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
@@ -20,14 +19,14 @@ parser.add_argument('--test', dest='is_test', action='store_true', help='flag fo
 args = parser.parse_args()
 
 # Experiment parameters
-# TODO: read all images
-# TODO: read more images when limiting mass or redshift
+# TODO: read all images, read more when limiting mass
+file_list = '/users/snakoneczny/workspace/cmb_lensing/file_base/mflat_nbins=100_binsize=100'
 mass_metric = 'M500c'
 batch_size = 64
 learning_rate = 0.0001
 if not args.is_test:
     epochs = 10000
-    patience = 800
+    patience = 100
     n_img = 20000
 else:
     epochs = 400
@@ -35,24 +34,19 @@ else:
     n_img = 200
 
 # Read, sample, reshape and split data
-X, y = read_train_data('/users/snakoneczny/data/lensing_takahashi_17/cmb_lens_imgs', n_img=n_img, col_y=mass_metric)
-
-y = np.log(y)
-
+X, y = read_train_data('/users/snakoneczny/data/lensing_takahashi_17/cmb_lens_imgs', n_img=n_img, col_y=mass_metric,
+                       file_list=file_list)
 X, y = get_flat_mass_distribution(X, y, n_bins=100, max_bin_size=100)
 X = X.reshape(X.shape[0], X.shape[1], X.shape[2], 1)
 y_train, y_test_low, y_test_high, y_test_random, X_train, X_test_low, X_test_high, X_test_random = \
     train_test_many_split(y, X, side_test_size=0.05, random_test_size=0.1)
 
 # Get and train data generator
-# TODO: flow from directory, probably not working with test standardization
-# TODO: try [0, 1] normalization with full data augmentation
-# TODO: 20-30 rotation range
-
+# TODO: only solid angle rotations
 datagen = ImageDataGenerator(
     featurewise_center=True,
     featurewise_std_normalization=True,
-    rotation_range=360,
+    # rotation_range=30,
     horizontal_flip=True,
     vertical_flip=True,
 )

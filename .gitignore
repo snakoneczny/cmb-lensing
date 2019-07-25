@@ -2,6 +2,8 @@
 .DS_Store
 predictions/
 tensorboard/
+src_kappa/
+file_base/
 
 # PyCharm
 .idea/

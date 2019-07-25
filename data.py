@@ -7,13 +7,35 @@ import pandas as pd
 import astropy.io.fits as fits
 from tqdm import tqdm
 
+from utils import safe_indexing
 
-def read_train_data(folder, col_y='M500c', n_img=None):
-    file_list = listdir(folder)
-    if n_img:
-        # MacOS requirements for number of open files
-        resource.setrlimit(resource.RLIMIT_NOFILE, (n_img + 1000, -1))
+
+CMB_LENS_COLS = [
+    'Ngrid',  # Number of pixels along x or y direction
+    'pix_size',  # Angular size of each pixel in unit of arcmin
+    # Information of cluster at the center of image
+    'M200b',  # Spherical overdensity mass with respect to 200 times mean mass density in unit of 10^14 Msun/h
+    'M200c',  # SO mass with respect to 200 times critical density in unit of 10^14 Msun/h
+    'M500c',  # SO mass with respect to 200 times critical density in unit of 10^14 Msun/h
+    'Mvir',  # SO mass with respect to virial overdensity in unit of 10^14 Msun/h
+    'Redshift',
+    # Scale radius inferred by fitting with The Navarro–Frenk–White (NFW) profile in unit of comoving Mpc/h
+    'R_scale',
+]
+
+
+def read_train_data(folder, col_y='M500c', n_img=None, file_list=None):
+    if file_list is None:
+        file_list = listdir(folder)
+    if n_img is None:
+        n_img = 20000
+
+    n_img = min(len(file_list), n_img)
+    if n_img > len(file_list):
         file_list = file_list[:n_img]
+
+    # MacOS requirements for number of open files
+    resource.setrlimit(resource.RLIMIT_NOFILE, (n_img + 100, -1))
 
     X, y = [], []
     for i, file_name in enumerate(tqdm(file_list, desc='Reading data')):
@@ -52,19 +74,7 @@ def read_cmb_lensed_img(file):
         header = hdu.header
 
         # Extract useful information from a header
-        to_extract = [
-            'Ngrid',  # Number of pixels along x or y direction
-            'pix_size',  # Angular size of each pixel in unit of arcmin
-            # Information of cluster at the center of image
-            'M200b',  # Spherical overdensity mass with respect to 200 times mean mass density in unit of 10^14 Msun/h
-            'M200c',  # SO mass with respect to 200 times critical density in unit of 10^14 Msun/h
-            'M500c',  # SO mass with respect to 200 times critical density in unit of 10^14 Msun/h
-            'Mvir',  # SO mass with respect to virial overdensity in unit of 10^14 Msun/h
-            'Redshift',
-            # Scale radius inferred by fitting with The Navarro–Frenk–White (NFW) profile in unit of comoving Mpc/h
-            'R_scale',
-        ]
-        info_dict = {key: header[key] for key in to_extract}
+        info_dict = {key: header[key] for key in CMB_LENS_COLS}
 
     return data, info_dict
 
@@ -101,7 +111,7 @@ def read_tng_data():
 #     return table
 
 def get_flat_mass_distribution(X, y, n_bins=100, max_bin_size=100):
-    np.random.seed(153214)
+    np.random.seed(15324)
     binned = pd.cut(y, n_bins)
     index_final = []
     for bin in binned.unique():
