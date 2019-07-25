@@ -20,13 +20,13 @@ args = parser.parse_args()
 
 # Experiment parameters
 # TODO: read all images, read more when limiting mass
-file_list = '/users/snakoneczny/workspace/cmb_lensing/file_base/mflat_nbins=100_binsize=100'
+train_files_path = '/users/snakoneczny/workspace/cmb_lensing/file_base/mflat_nbins=100_binsize=100'
 mass_metric = 'M500c'
 batch_size = 64
 learning_rate = 0.0001
 if not args.is_test:
     epochs = 10000
-    patience = 100
+    patience = 200
     n_img = 20000
 else:
     epochs = 400
@@ -35,7 +35,7 @@ else:
 
 # Read, sample, reshape and split data
 X, y = read_train_data('/users/snakoneczny/data/lensing_takahashi_17/cmb_lens_imgs', n_img=n_img, col_y=mass_metric,
-                       file_list=file_list)
+                       file_list_path=train_files_path)
 X, y = get_flat_mass_distribution(X, y, n_bins=100, max_bin_size=100)
 X = X.reshape(X.shape[0], X.shape[1], X.shape[2], 1)
 y_train, y_test_low, y_test_high, y_test_random, X_train, X_test_low, X_test_high, X_test_random = \
