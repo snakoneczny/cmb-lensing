@@ -5,10 +5,9 @@ import resource
 import numpy as np
 import pandas as pd
 import astropy.io.fits as fits
-from tqdm import tqdm
+from tqdm import tqdm, tqdm_notebook
 
 from utils import safe_indexing
-
 
 CMB_LENS_COLS = [
     'Ngrid',  # Number of pixels along x or y direction
@@ -21,19 +20,21 @@ CMB_LENS_COLS = [
     'Redshift',
     # Scale radius inferred by fitting with The Navarro–Frenk–White (NFW) profile in unit of comoving Mpc/h
     'R_scale',
+    'theta_i',
+    'phi_i',
 ]
 
 
 def read_train_data(folder, col_y='M500c', n_img=None, file_list_path=None):
     file_list = np.loadtxt(file_list_path, dtype=str) if file_list_path is not None else listdir(folder)
-    n_img = 20000 if n_img is None else n_img
+    # n_img = 20000 if n_img is None else n_img
 
-    n_img = min(len(file_list), n_img)
+    n_img = len(file_list) if n_img is None else min(n_img, len(file_list))
     if n_img < len(file_list):
         file_list = file_list[:n_img]
 
     # MacOS requirements for number of open files
-    resource.setrlimit(resource.RLIMIT_NOFILE, (n_img + 100, -1))
+    # resource.setrlimit(resource.RLIMIT_NOFILE, (n_img + 100, -1))
 
     X, y = [], []
     for i, file_name in enumerate(tqdm(file_list, desc='Reading data')):
@@ -49,13 +50,16 @@ def read_train_data(folder, col_y='M500c', n_img=None, file_list_path=None):
 
 def read_cmb_lensed_folder(folder, n_img=None):
     file_list = listdir(folder)
-    if n_img:
-        # MacOS requirements for number of open files
-        resource.setrlimit(resource.RLIMIT_NOFILE, (n_img + 1000, -1))
+
+    n_img = len(file_list) if n_img is None else min(n_img, len(file_list))
+    if n_img < len(file_list):
         file_list = file_list[:n_img]
 
+    # MacOS requirements for number of open files
+    # resource.setrlimit(resource.RLIMIT_NOFILE, (n_img + 1000, -1))
+    
     data = pd.DataFrame()
-    for i, file_name in enumerate(tqdm(file_list, desc='Reading data')):
+    for i, file_name in enumerate(tqdm_notebook(file_list, desc='Reading data')):
         file_path = join(folder, file_name)
         img, img_info = read_cmb_lensed_img(file_path)
         img_info['image'] = img
