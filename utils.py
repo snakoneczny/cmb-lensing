@@ -5,6 +5,10 @@ from os import path
 import numpy as np
 from sklearn.model_selection import train_test_split
 
+DATA_DIR_RELATIVE = '../../data/lensing_takahashi_17'
+DATA_DIR_CIS = '/mnt/home/snakoneczny/data/lensing_takahashi_17'
+DATA_DIR_MOUNT = '/mnt/cis/data/lensing_takahashi_17'
+
 logformat = '%(asctime)s %(levelname)s: %(message)s'
 datefmt = '%d/%m/%Y %H:%M:%S'
 logging.basicConfig(format=logformat, datefmt=datefmt, level=logging.INFO)
