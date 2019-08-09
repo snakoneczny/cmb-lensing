@@ -1,3 +1,4 @@
+from itertools import chain
 from math import log
 
 import numpy as np
@@ -6,6 +7,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from scipy.stats import norm
+from sklearn.model_selection import train_test_split
+
+from utils import safe_indexing
 
 
 def relative_error(y_true, y_pred):
@@ -74,3 +78,63 @@ def plot_error_in_bins(exp_output, y_col='M500c'):
         plt.xlabel('M500c')
         plt.ylabel(plot_title)
     #     plt.legend()
+
+
+def train_test_many_split(*arrays, side_test_size=0.05, random_test_size=0.1):
+    """
+    :param arrays: arrays of any format, the first one should be array or Series
+        All arrays are divided based on the values in the first one
+    :param side_test_size: float (0, 1)
+    :param random_test_size: float (0, 1)
+    :return: list
+    """
+    n_arrays = len(arrays)
+    if n_arrays == 0:
+        raise ValueError('At least one array required as input')
+
+    # Make indexable
+    arrays = [a for a in arrays]
+
+    # Get top index
+    k = int(side_test_size * arrays[0].shape[0])
+    split_ind = arrays[0].shape[0] - k
+    ind_part = np.argpartition(arrays[0], split_ind)
+    ind_test_top = ind_part[split_ind:]
+    ind_top_low = ind_part[:split_ind]
+
+    # Get low index
+    split_ind = k
+    ind_part = np.argpartition(arrays[0], split_ind)
+    ind_low_top = ind_part[split_ind:]
+    ind_test_low = ind_part[:split_ind]
+
+    ind_middle = np.intersect1d(ind_top_low, ind_low_top, assume_unique=True)
+    ind_train, ind_test_random = train_test_split(ind_middle, test_size=random_test_size, random_state=8725)
+
+    return list(chain.from_iterable((safe_indexing(a, ind_train), safe_indexing(a, ind_test_low),
+                                     safe_indexing(a, ind_test_top), safe_indexing(a, ind_test_random)) for a in
+                                    arrays))
+
+
+def train_test_top_split(*arrays, test_size=0.05):
+    """
+    :param arrays: arrays of any format, the first one should be array or Series
+        All arrays are divided based on the values in the first one
+    :param test_size: float (0, 1)
+    :return: list
+    """
+    n_arrays = len(arrays)
+    if n_arrays == 0:
+        raise ValueError('At least one array required as input')
+
+    # Make indexable
+    arrays = [a for a in arrays]
+
+    # Get top
+    k = int(test_size * arrays[0].shape[0])
+    split_ind = arrays[0].shape[0] - k
+    ind_part = np.argpartition(arrays[0], split_ind)
+    ind_top = ind_part[split_ind:]
+    ind_low = ind_part[:split_ind]
+
+    return list(chain.from_iterable((safe_indexing(a, ind_low), safe_indexing(a, ind_top)) for a in arrays))

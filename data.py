@@ -1,15 +1,13 @@
 from os import listdir
 from os.path import join
-import resource
 
 import numpy as np
 import pandas as pd
 import astropy.io.fits as fits
 from tqdm import tqdm, tqdm_notebook
 
-from utils import safe_indexing
-
-CMB_LENS_COLS = [
+CMB_LENS_COLS = {
+    'ID',
     'Ngrid',  # Number of pixels along x or y direction
     'pix_size',  # Angular size of each pixel in unit of arcmin
     # Information of cluster at the center of image
@@ -22,10 +20,10 @@ CMB_LENS_COLS = [
     'R_scale',
     'theta_i',
     'phi_i',
-]
+}
 
 
-def read_train_data(folder, col_y='M500c', n_img=None, file_list_path=None):
+def read_train_data(folder, col_y='M500c', n_img=None, file_list_path=None, image_size=None):
     file_list = np.loadtxt(file_list_path, dtype=str) if file_list_path is not None else listdir(folder)
     # n_img = 20000 if n_img is None else n_img
 
@@ -41,7 +39,17 @@ def read_train_data(folder, col_y='M500c', n_img=None, file_list_path=None):
         file_path = join(folder, file_name)
         img, img_info = read_cmb_lensed_img(file_path)
 
-        # if img_info['M200b'] > 2.0:
+        if image_size:
+            img_center = img.shape[0] / 2
+            left = img_center - image_size / 2
+            right = img_center + image_size / 2
+            print(img)
+            print(img.shape)
+            img = img[left: right, left:right]
+            print(img)
+            print(img.shape)
+            exit()
+
         X.append(img)
         y.append(img_info[col_y])
 
@@ -57,7 +65,7 @@ def read_cmb_lensed_folder(folder, n_img=None):
 
     # MacOS requirements for number of open files
     # resource.setrlimit(resource.RLIMIT_NOFILE, (n_img + 1000, -1))
-    
+
     data = pd.DataFrame()
     for i, file_name in enumerate(tqdm_notebook(file_list, desc='Reading data')):
         file_path = join(folder, file_name)
@@ -76,45 +84,14 @@ def read_cmb_lensed_img(file):
         header = hdu.header
 
         # Extract useful information from a header
-        info_dict = {key: header[key] for key in CMB_LENS_COLS}
+        info_dict = {key: header[key] for key in CMB_LENS_COLS if key in header}
 
     return data, info_dict
 
 
-def read_tng_data():
-    data = np.load('/users/snakoneczny/data/TNGclusterdat_augmented.npy')
-    print(data.dtype.names)
-    labels = np.log10(data['m500']).reshape(-1, 1)
-    return data['data'], labels, data['id'] % 10  # data, labels, folds
-
-
-# def read_fits_to_pandas(filepath, columns=None):
-#     table = Table.read(filepath, format='fits')
-#
-#     # Limit table to useful columns and check if SDSS columns are present from cross-matching
-#     if columns is None:
-#         columns_errors = ['MAGERR_GAAP_{}'.format(band) for band in BANDS]
-#         columns = COLUMNS_KIDS + BAND_COLUMNS + COLOR_NEXT_COLUMNS + columns_errors + FLAGS_GAAP_COLUMNS + [
-#             'IMAFLAGS_ISO']
-#         if COLUMNS_SDSS[0] in table.columns:
-#             columns += COLUMNS_SDSS
-#     # Get proper columns into a pandas data frame
-#     table = table[columns].to_pandas()
-#
-#     # Binary string don't work with scikit metrics
-#     if 'CLASS' in table:
-#         table.loc[:, 'CLASS'] = table['CLASS'].apply(lambda x: x.decode('UTF-8').strip())
-#     table.loc[:, 'ID'] = table['ID'].apply(lambda x: x.decode('UTF-8').strip())
-#
-#     # Change type to work with it as with a bit map
-#     if 'IMAFLAGS_ISO' in table:
-#         table.loc[:, 'IMAFLAGS_ISO'] = table['IMAFLAGS_ISO'].astype(int)
-#
-#     return table
-
-def get_flat_mass_distribution(X, y, n_bins=100, max_bin_size=100):
+def get_flat_mass_dist_idx(data, n_bins=100, max_bin_size=100):
     np.random.seed(15324)
-    binned = pd.cut(y, n_bins)
+    binned = pd.cut(data, n_bins)
     index_final = []
     for bin in binned.unique():
         index = np.where(binned == bin)[0]
@@ -122,4 +99,14 @@ def get_flat_mass_distribution(X, y, n_bins=100, max_bin_size=100):
         if bin_size > max_bin_size:
             index = np.random.choice(index, max_bin_size)
         index_final.extend(index)
-    return X[index_final], y[index_final]
+    return index_final
+
+
+def get_flat_mass_dist(X, y, n_bins=100, max_bin_size=100):
+    idx = get_flat_mass_dist_idx(y, n_bins=n_bins, max_bin_size=max_bin_size)
+    return X[idx], y[idx]
+
+
+def get_flat_mass_dist_for_df(data, col='M500c', n_bins=100, max_bin_size=100):
+    idx = get_flat_mass_dist_idx(data[col], n_bins=n_bins, max_bin_size=max_bin_size)
+    return data.iloc[idx]

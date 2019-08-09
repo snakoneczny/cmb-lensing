@@ -12,17 +12,17 @@ def get_model(input_shape, lr=0.001):
     model.add(Conv2D(16, kernel_size=(3, 3), input_shape=input_shape))
     # model.add(BatchNormalization())
     model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+    # model.add(MaxPooling2D(pool_size=(2, 2)))
 
     model.add(Conv2D(32, kernel_size=(3, 3)))
     # model.add(BatchNormalization())
     model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+    # model.add(MaxPooling2D(pool_size=(2, 2)))
 
     model.add(Conv2D(64, kernel_size=(3, 3)))
     # model.add(BatchNormalization())
     model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+    # model.add(MaxPooling2D(pool_size=(2, 2)))
 
     # TODOL flatten
     model.add(GlobalAveragePooling2D())
