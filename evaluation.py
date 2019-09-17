@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from scipy.stats import norm
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GroupShuffleSplit
 
 from utils import safe_indexing
 
@@ -56,12 +56,12 @@ def evaluate(exp_output, y_col='M500c', mass_max=None):
 
 def plot_error_in_bins(exp_output, y_col='M500c'):
     # Get  and assign bins
-    _, bin_edges = np.histogram(exp_output['M500c'], bins=40)
+    _, bin_edges = np.histogram(exp_output[y_col], bins=40)
     exp_output.loc[:, 'binned'] = pd.cut(exp_output['m_pred'], bin_edges)
 
     # Calculate residuals
-    exp_output.loc[:, 'rel_residual'] = (exp_output['m_pred'] - exp_output['M500c']) / exp_output['M500c']
-    exp_output.loc[:, 'residual_sqr'] = (exp_output['m_pred'] - exp_output['M500c']) ** 2
+    exp_output.loc[:, 'rel_residual'] = (exp_output['m_pred'] - exp_output[y_col]) / exp_output[y_col]
+    exp_output.loc[:, 'residual_sqr'] = (exp_output['m_pred'] - exp_output[y_col]) ** 2
 
     # Calculate values in bins
     grouped = exp_output.groupby(by='binned')
@@ -75,12 +75,12 @@ def plot_error_in_bins(exp_output, y_col='M500c'):
         plt.figure()
         ax = sns.lineplot(bin_edges[:-1], x, drawstyle='steps-pre')  # color=color_palette[i]
         #     ax.lines[i].set_linestyle(get_line_style(i))
-        plt.xlabel('M500c')
+        plt.xlabel(y_col)
         plt.ylabel(plot_title)
     #     plt.legend()
 
 
-def train_test_many_split(*arrays, side_test_size=0.05, random_test_size=0.1):
+def train_test_many_split(*arrays, groups=None, side_test_size=0.05, random_test_size=0.1):
     """
     :param arrays: arrays of any format, the first one should be array or Series
         All arrays are divided based on the values in the first one
@@ -109,7 +109,10 @@ def train_test_many_split(*arrays, side_test_size=0.05, random_test_size=0.1):
     ind_test_low = ind_part[:split_ind]
 
     ind_middle = np.intersect1d(ind_top_low, ind_low_top, assume_unique=True)
-    ind_train, ind_test_random = train_test_split(ind_middle, test_size=random_test_size, random_state=8725)
+
+    # ind_train, ind_test_random = train_test_split(ind_middle, test_size=random_test_size, random_state=8725)
+    splitter = GroupShuffleSplit(n_splits=1, test_size=random_test_size, random_state=8725)
+    ind_train, ind_test_random = next(splitter.split(X=ind_middle, groups=safe_indexing(groups, ind_middle)))
 
     return list(chain.from_iterable((safe_indexing(a, ind_train), safe_indexing(a, ind_test_low),
                                      safe_indexing(a, ind_test_top), safe_indexing(a, ind_test_random)) for a in

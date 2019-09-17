@@ -22,28 +22,34 @@ parser.add_argument('-t', '--tag', dest='tag', help='experiment tag, added to lo
 parser.add_argument('--test', dest='is_test', action='store_true', help='flag for making a quick test')
 args = parser.parse_args()
 
-# Experiment parameters
-# TODO: read all images, read more when limiting mass
+# Masato's data
 # train_files_path = path.join(DATA_DIR_RELATIVE, 'file_base/cut_nres13_n054_flat_nbins-100_binsize-100.csv')
 # train_data_path = path.join(DATA_DIR_RELATIVE, 'cut_nres13_r054_fits_org')
-data_file_name = 'train_base/halo_nres13_r000_M200b-min-1e14_equator-pi-9_flat-mass-100-100.csv'
-images_file_name = 'train_base/imgs_nres13_r000_M200b-min-1e14_equator-pi-9_flat-mass-100-100.npy'
-data_path = path.join(DATA_DIR_RELATIVE, data_file_name)
-images_path = path.join(DATA_DIR_RELATIVE, images_file_name)
 
+# Images from Masato's code
+# images_folder = 'cut_nres13_r000_fits'
+# images_path = path.join(DATA_DIR_RELATIVE, images_folder)
+
+# My data
+data_name = 'nres13_r000_M200b-min-1e14_flat-mass-100-100'
+cmb_name = 'zs6_cut-32'
+data_path = path.join(DATA_DIR_RELATIVE, 'train_base', 'halo_{}.csv'.format(data_name))
+images_path = path.join(DATA_DIR_RELATIVE, 'train_base', 'imgs_{}_{}.npy'.format(data_name, cmb_name))
+
+# Experiment parameters
 mass_metric = 'M500c'
 batch_size = 64
 learning_rate = 0.0001
 if not args.is_test:
     epochs = 20000
-    patience = 600
+    patience = 200
     n_img = None
 else:
     epochs = 400
     patience = 10
     n_img = 200
 
-# Read, sample, reshape and split data
+# Read Masato's images
 # X, y = read_train_data(train_data_path, n_img=n_img, col_y=mass_metric,
 #                        file_list_path=train_files_path, image_size=20)
 # X, y = get_flat_mass_dist(X, y, n_bins=100, max_bin_size=100)
@@ -52,15 +58,13 @@ data = pd.read_csv(data_path)
 X = np.load(images_path)
 y = data[mass_metric].values
 
-y = np.log(y)
-
 X = X.reshape(X.shape[0], X.shape[1], X.shape[2], 1)
 
 y_train, y_test_low, y_test_high, y_test_random, X_train, X_test_low, X_test_high, X_test_random = \
-    train_test_many_split(y, X, side_test_size=0.05, random_test_size=0.1)
+    train_test_many_split(y, X, groups=data['ID'], side_test_size=0.05, random_test_size=0.1)
 
 # Get and train data generator
-# TODO: only solid angle rotations
+# TODO: solid angle rotations
 datagen = ImageDataGenerator(
     featurewise_center=True,
     featurewise_std_normalization=True,
